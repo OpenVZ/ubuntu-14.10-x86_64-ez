@@ -1,0 +1,172 @@
+#!/bin/bash
+
+#sanify check
+if [ $# -lt 1 ] ; then
+	echo "usage $0 ROOTDIR"
+	exit 1
+fi
+
+rootdir=$1
+    
+if [ -z "$rootdir" ]; then
+	echo "ROOTDIR is not set."
+	exit 1
+fi
+		
+# Check root directory
+if [ ! -d $rootdir ]; then
+	echo "$rootdir: should be a directory."
+	exit 1
+fi
+
+pushd $rootdir > /dev/null
+
+mkdir etc
+ln -sf /usr/share/zoneinfo/UTC etc/localtime
+
+echo "proc  /proc       proc    defaults    0    0" >> etc/fstab
+echo "none  /dev/pts    devpts  rw,gid=5,mode=620    0    0" >> etc/fstab
+echo "none  /run/shm    tmpfs   defaults    0    0" >> etc/fstab
+
+mkdir -p etc/init.d
+
+echo "#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:          wide-dhcpv6-client
+# Required-Start:
+# Required-Stop:
+# Should-Start:
+# Should-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start/Stop WIDE DHCPv6 client
+# Description:       (empty)
+### END INIT INFO
+
+exit 0
+" > etc/init.d/wide-dhcpv6-client
+
+chmod 0755 etc/init.d/wide-dhcpv6-client
+
+echo "#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:          bind9
+# Required-Start:
+# Required-Stop:
+# Should-Start:
+# Should-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start and stop bind9
+# Description:       bind9 is a Domain Name Server (DNS)
+#        which translates ip addresses to and from internet names
+### END INIT INFO
+
+exit 0
+" > etc/init.d/bind9
+
+chmod 0755 etc/init.d/bind9
+
+mkdir -p etc/init
+echo "description	\"dummy upstart config\"
+
+start on startup
+
+task
+exec /bin/true
+" > etc/init/procps.conf
+
+# add some basic groups and users, provides by base-passwd
+# some debs (base-files,..) use it before base-passwd installation
+echo "root:x:0:
+daemon:x:1:
+bin:x:2:
+sys:x:3:
+adm:x:4:syslog
+tty:x:5:
+disk:x:6:
+lp:x:7:
+mail:x:8:
+news:x:9:
+uucp:x:10:
+man:x:12:
+proxy:x:13:
+kmem:x:15:
+dialout:x:20:
+fax:x:21:
+voice:x:22:
+cdrom:x:24:
+floppy:x:25:
+tape:x:26:
+sudo:x:27:
+audio:x:29:
+dip:x:30:
+www-data:x:33:
+backup:x:34:
+operator:x:37:
+list:x:38:
+irc:x:39:
+src:x:40:
+gnats:x:41:
+shadow:x:42:
+utmp:x:43:
+video:x:44:
+sasl:x:45:
+plugdev:x:46:
+staff:x:50:
+games:x:60:
+users:x:100:
+nogroup:x:65534:
+libuuid:x:101:
+netdev:x:102:
+crontab:x:103:
+syslog:x:104:
+fuse:x:105:
+messagebus:x:107:
+sambashare:x:108:
+mlocate:x:109:
+ssh:x:110:
+bind:x:111:
+ssl-cert:x:112:
+postfix:x:113:
+postdrop:x:114:
+dovecot:x:115:
+dovenull:x:116:
+landscape:x:117:
+winbindd_priv:x:119:
+lpadmin:x:121:" > etc/group
+
+echo "root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+sync:x:4:65534:sync:/bin:/bin/sync
+games:x:5:60:games:/usr/games:/usr/sbin/nologin
+man:x:6:12:man:/var/cache/man:/usr/sbin/nologin
+lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin
+mail:x:8:8:mail:/var/mail:/usr/sbin/nologin
+news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
+uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin
+proxy:x:13:13:proxy:/bin:/usr/sbin/nologin
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+backup:x:34:34:backup:/var/backups:/usr/sbin/nologin
+list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin
+irc:x:39:39:ircd:/var/run/ircd:/usr/sbin/nologin
+gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/usr/sbin/nologin
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+libuuid:x:100:101::/var/lib/libuuid:
+syslog:x:101:104::/home/syslog:/bin/false
+messagebus:x:103:107::/var/run/dbus:/bin/false
+bind:x:104:111::/var/cache/bind:/bin/false
+postfix:x:105:113::/var/spool/postfix:/bin/false
+dovecot:x:106:115:Dovecot mail server,,,:/usr/lib/dovecot:/bin/false
+dovenull:x:107:116:Dovecot login user,,,:/nonexistent:/bin/false
+landscape:x:108:117::/var/lib/landscape:/bin/false
+sshd:x:109:65534::/var/run/sshd:/usr/sbin/nologin" > etc/passwd
+
+mkdir -p usr/bin
+ln -s /usr/bin/gawk usr/bin/awk
+
+popd > /dev/null
